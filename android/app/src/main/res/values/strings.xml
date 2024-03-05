@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">PasskeyLoginPOC</string>
+    <string name="asset_statements" translatable="false">
+    [{
+        \"include\": \"https://joseaki.github.io/.well-known/assetlinks.json\"
+    }]
+    </string>
 </resources>

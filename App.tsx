@@ -8,11 +8,13 @@
 import React from 'react';
 import type {PropsWithChildren} from 'react';
 import {
+  NativeModules,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
@@ -71,26 +73,70 @@ function App(): React.JSX.Element {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        <TouchableOpacity
+          style={{padding: 16}}
+          onPress={() => {
+            NativeModules.RNPasskeyModule.createCredential({
+              challenge: 'abc123',
+              rp: {
+                name: 'Credential Manager example',
+                id: 'joseaki.github.io',
+              },
+              user: {
+                id: 'c9f3e0dd-c77f-450a-83ae-024f3ce7ef14',
+                name: '73047716',
+                displayName: 'Antonio Alanya',
+              },
+              pubKeyCredParams: [
+                {
+                  type: 'public-key',
+                  alg: -7,
+                },
+                {
+                  type: 'public-key',
+                  alg: -257,
+                },
+              ],
+              timeout: 1800000,
+              attestation: 'none',
+              excludeCredentials: [
+                {
+                  id: 'ghi789',
+                  type: 'public-key',
+                },
+                {
+                  id: 'jkl012',
+                  type: 'public-key',
+                },
+              ],
+              authenticatorSelection: {
+                authenticatorAttachment: 'platform',
+                requireResidentKey: true,
+                residentKey: 'required',
+                userVerification: 'required',
+              },
+            }).then(resp => {
+              console.log('CREATE', resp);
+            });
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
+          <Text>register</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={{padding: 16}}
+          onPress={() => {
+            NativeModules.RNPasskeyModule.signIn({
+              challenge: 'T1xCsnxM2DNL2KdK5CLa6fMhD7OBqho6syzInk_n-Uo',
+              allowCredentials: [],
+              timeout: 1800000,
+              userVerification: 'required',
+              rpId: 'joseaki.github.io',
+            }).then(resp => {
+              console.log('SIGNIN', resp);
+            });
+          }}>
+          <Text>login</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
