@@ -26,6 +26,9 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
+import axios from 'axios';
+import base64 from 'react-native-base64';
+import {decode, encode} from 'base64-arraybuffer';
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -64,6 +67,41 @@ function App(): React.JSX.Element {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
+  async function postData(url = '', data = {}) {
+    // Default options are marked with *
+    const response = await fetch(url, {
+      method: 'POST', // *GET, POST, PUT, DELETE, etc.
+      mode: 'cors', // no-cors, *cors, same-origin
+      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+      credentials: 'same-origin', // include, *same-origin, omit
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      redirect: 'follow', // manual, *follow, error
+      referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+      body: JSON.stringify(data), // body data type must match "Content-Type" header
+    });
+    return response.json(); // parses JSON response into native JavaScript objects
+  }
+
+  const transformToURLSafe = (challenge: string) => {
+    const encodedChallenge = challenge
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/\=+$/, '');
+    return encodedChallenge;
+  };
+
+  const transformBase64 = (responseId: string) => {
+    let id = responseId;
+    if (id.length % 4 !== 0) {
+      id += '==='.slice(0, 4 - (id.length % 4));
+    }
+    id = id.replace(/-/g, '+').replace(/_/g, '/');
+    return id;
+  };
+
   return (
     <SafeAreaView style={backgroundStyle}>
       <StatusBar
@@ -75,49 +113,51 @@ function App(): React.JSX.Element {
         style={backgroundStyle}>
         <TouchableOpacity
           style={{padding: 16}}
-          onPress={() => {
-            NativeModules.RNPasskeyModule.createCredential({
-              challenge: 'abc123',
-              rp: {
-                name: 'Credential Manager example',
-                id: 'joseaki.github.io',
-              },
-              user: {
-                id: 'c9f3e0dd-c77f-450a-83ae-024f3ce7ef14',
-                name: '73047716',
-                displayName: 'Antonio Alanya',
-              },
-              pubKeyCredParams: [
+          onPress={async () => {
+            try {
+              const {data: datax} = await axios.post(
+                'http://192.168.1.104:3000/api/auth/register',
+                {username: '73047716'},
                 {
-                  type: 'public-key',
-                  alg: -7,
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
                 },
+              );
+              const {data} = await axios.post(
+                'http://192.168.1.104:3000/api/auth/create-challenge',
+                {userId: datax.userId},
+              );
+
+              const response =
+                await NativeModules.RNPasskeyModule.createCredential({
+                  ...data,
+                  user: {
+                    id: base64.decode(data.user.id),
+                    name: base64.decode(data.user.name),
+                    displayName: base64.decode(data.user.displayName),
+                  },
+                  challenge: transformToURLSafe(data.challenge),
+                  timeout: 50000,
+                });
+
+              const {data: response2} = await axios.post(
+                'http://192.168.1.104:3000/api/auth/respond-challenge',
                 {
-                  type: 'public-key',
-                  alg: -257,
+                  userId: datax.userId,
+                  id: transformBase64(response.id),
+                  rawId: response.rawId,
+                  response: {
+                    attestationObject: response.response.attestationObject,
+                    clientDataJSON: response.response.clientDataJSON,
+                  },
                 },
-              ],
-              timeout: 1800000,
-              attestation: 'none',
-              excludeCredentials: [
-                {
-                  id: 'ghi789',
-                  type: 'public-key',
-                },
-                {
-                  id: 'jkl012',
-                  type: 'public-key',
-                },
-              ],
-              authenticatorSelection: {
-                authenticatorAttachment: 'platform',
-                requireResidentKey: true,
-                residentKey: 'required',
-                userVerification: 'required',
-              },
-            }).then(resp => {
-              console.log('CREATE', resp);
-            });
+              );
+
+              console.log(response2);
+            } catch (error) {
+              console.error(error);
+            }
           }}>
           <Text>register</Text>
         </TouchableOpacity>
