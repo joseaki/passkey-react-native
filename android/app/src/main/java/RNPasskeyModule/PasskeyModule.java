@@ -125,7 +125,6 @@ public class PasskeyModule extends ReactContextBaseJavaModule {
 
     private void handlePasskeysRegister(CreateCredentialResponse result, Promise promise) {
         try {
-            Log.i(TAG, result.toString());
             String registrationResponse = result.getData().getString("androidx.credentials.BUNDLE_KEY_REGISTRATION_RESPONSE_JSON");
             JSONObject jsonObject = new JSONObject(registrationResponse);
             WritableMap response = convertJsonObjectToWritableMap(jsonObject);
@@ -139,7 +138,6 @@ public class PasskeyModule extends ReactContextBaseJavaModule {
     public void createPasskey(String requestJson, boolean preferImmediatelyAvailableCredentials, Promise promise) {
 
         CredentialManager credentialManager = CredentialManager.create(mReactContext);
-        Log.i(TAG, "json "+requestJson);
         CreatePublicKeyCredentialRequest createPublicKeyCredentialRequest = new CreatePublicKeyCredentialRequest(requestJson, null, preferImmediatelyAvailableCredentials);
         credentialManager.createCredentialAsync(
                 Objects.requireNonNull(mReactContext.getCurrentActivity()),
@@ -157,7 +155,7 @@ public class PasskeyModule extends ReactContextBaseJavaModule {
                         if (e instanceof CreatePublicKeyCredentialDomException) {
                             Log.i(TAG, "Error CreatePublicKeyCredentialDomException" + ((CreatePublicKeyCredentialDomException) e).getDomError());
                             Log.i(TAG, "Error CreatePublicKeyCredentialDomException" + ((CreatePublicKeyCredentialDomException) e).getMessage());
-                            promise.reject("error", "CreatePublicKeyCredentialDomException" + ((CreatePublicKeyCredentialDomException) e).getDomError().toString());
+                            promise.reject("error", "CreatePublicKeyCredentialDomException " + ((CreatePublicKeyCredentialDomException) e).getDomError());
                             // Handle the passkey DOM errors thrown according to the
                             // WebAuthn spec.
                             ;
@@ -178,7 +176,7 @@ public class PasskeyModule extends ReactContextBaseJavaModule {
                             // Most likely, you're missing the
                             // "credentials-play-services-auth" module.
                         } else if (e instanceof CreateCredentialUnknownException) {
-                            Log.i(TAG, "Error CreateCredentialUnknownException" + e.getMessage());
+                            Log.i(TAG, "Error CreateCredentialUnknownException");
                             promise.reject("error", "CreateCredentialUnknownException");
                         } else if (e instanceof CreateCredentialCustomException) {
                             Log.i(TAG, "Error CreateCredentialCustomException");
