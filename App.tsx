@@ -5,7 +5,7 @@
  * @format
  */
 
-import React from 'react';
+import React, {useState} from 'react';
 import type {PropsWithChildren} from 'react';
 import {
   NativeModules,
@@ -19,16 +19,10 @@ import {
   View,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
 import axios from 'axios';
 import base64 from 'react-native-base64';
-import {decode, encode} from 'base64-arraybuffer';
+import {decode} from 'base-64';
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -62,29 +56,11 @@ function Section({children, title}: SectionProps): React.JSX.Element {
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const [user, setUser] = useState();
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
-
-  async function postData(url = '', data = {}) {
-    // Default options are marked with *
-    const response = await fetch(url, {
-      method: 'POST', // *GET, POST, PUT, DELETE, etc.
-      mode: 'cors', // no-cors, *cors, same-origin
-      cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-      credentials: 'same-origin', // include, *same-origin, omit
-      headers: {
-        'Content-Type': 'application/json',
-        // 'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      redirect: 'follow', // manual, *follow, error
-      referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-      body: JSON.stringify(data), // body data type must match "Content-Type" header
-    });
-    return response.json(); // parses JSON response into native JavaScript objects
-  }
-
   const transformToURLSafe = (challenge: string) => {
     const encodedChallenge = challenge
       .replace(/\+/g, '-')
@@ -125,28 +101,35 @@ function App(): React.JSX.Element {
                 },
               );
               const {data} = await axios.post(
-                'http://192.168.1.104:3000/api/auth/create-challenge',
+                'http://192.168.1.104:3000/api/auth/create-register-challenge',
                 {userId: datax.userId},
+              );
+
+              setUser(datax.userId);
+
+              const {challengeToken, ...rest} = data;
+              const {base64UserId, challenge} = JSON.parse(
+                decode(challengeToken.split('.')[1]),
               );
 
               const response =
                 await NativeModules.RNPasskeyModule.createCredential({
-                  ...data,
+                  ...rest,
                   user: {
-                    id: base64.decode(data.user.id),
+                    id: base64.decode(base64UserId),
                     name: base64.decode(data.user.name),
                     displayName: base64.decode(data.user.displayName),
                   },
-                  challenge: transformToURLSafe(data.challenge),
+                  challenge: transformToURLSafe(challenge),
                   timeout: 50000,
                 });
 
               const {data: response2} = await axios.post(
-                'http://192.168.1.104:3000/api/auth/respond-challenge',
+                'http://192.168.1.104:3000/api/auth/confirm-register-challenge',
                 {
-                  userId: datax.userId,
                   id: transformBase64(response.id),
-                  rawId: response.rawId,
+                  challengeToken: challengeToken,
+                  rawId: transformBase64(response.rawId),
                   response: {
                     attestationObject: response.response.attestationObject,
                     clientDataJSON: response.response.clientDataJSON,
@@ -164,16 +147,45 @@ function App(): React.JSX.Element {
 
         <TouchableOpacity
           style={{padding: 16}}
-          onPress={() => {
-            NativeModules.RNPasskeyModule.signIn({
-              challenge: 'T1xCsnxM2DNL2KdK5CLa6fMhD7OBqho6syzInk_n-Uo',
-              allowCredentials: [],
-              timeout: 1800000,
-              userVerification: 'required',
-              rpId: 'joseaki.github.io',
-            }).then(resp => {
-              console.log('SIGNIN', resp);
+          onPress={async () => {
+            const {data} = await axios.post(
+              'http://192.168.1.104:3000/api/auth/create-auth-challenge',
+              {
+                userId: user,
+              },
+            );
+
+            const {challengeToken} = data;
+            const {challenge} = JSON.parse(
+              decode(challengeToken.split('.')[1]),
+            );
+            const response = await NativeModules.RNPasskeyModule.signIn({
+              challenge: transformToURLSafe(challenge),
+              timeout: 50000,
+              userVerification: data.userVerification,
+              rpId: data.rpId,
+              allowCredentials: [
+                {
+                  id: transformToURLSafe(data.allowCredentials[0].id),
+                  type: data.allowCredentials[0].type,
+                },
+              ],
             });
+
+            await axios.post(
+              'http://192.168.1.104:3000/api/auth/confirm-auth-challenge',
+              {
+                challengeToken,
+                id: transformBase64(response.id),
+                rawId: transformBase64(response.rawId),
+                response: {
+                  ...response.response,
+                  authenticatorData: transformBase64(
+                    response.response.authenticatorData,
+                  ),
+                },
+              },
+            );
           }}>
           <Text>login</Text>
         </TouchableOpacity>
