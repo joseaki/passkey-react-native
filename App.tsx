@@ -57,6 +57,7 @@ function Section({children, title}: SectionProps): React.JSX.Element {
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const [user, setUser] = useState();
+  const [resp, setResp] = useState(false);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
@@ -124,6 +125,8 @@ function App(): React.JSX.Element {
                   timeout: 50000,
                 });
 
+              console.log('ANDROID REGITER', response);
+
               const {data: response2} = await axios.post(
                 'http://192.168.1.104:3000/api/auth/confirm-register-challenge',
                 {
@@ -154,6 +157,7 @@ function App(): React.JSX.Element {
                 userId: user,
               },
             );
+            console.log('API', data);
 
             const {challengeToken} = data;
             const {challenge} = JSON.parse(
@@ -183,12 +187,16 @@ function App(): React.JSX.Element {
                   authenticatorData: transformBase64(
                     response.response.authenticatorData,
                   ),
+                  userHandle: response.rawId,
                 },
               },
             );
+
+            setResp(true);
           }}>
           <Text>login</Text>
         </TouchableOpacity>
+        {resp ? <Text>Logged In</Text> : null}
       </ScrollView>
     </SafeAreaView>
   );
