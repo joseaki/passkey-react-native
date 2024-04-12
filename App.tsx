@@ -187,7 +187,6 @@ function App(): React.JSX.Element {
                   authenticatorData: transformBase64(
                     response.response.authenticatorData,
                   ),
-                  userHandle: response.rawId,
                 },
               },
             );
